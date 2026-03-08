@@ -1,0 +1,67 @@
+package handler
+
+import (
+	"context"
+	"net/http"
+
+	domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
+	"github.com/gaohao-creator/go-rag/internal/service"
+	webmiddleware "github.com/gaohao-creator/go-rag/internal/web/middleware"
+	"github.com/gin-gonic/gin"
+)
+
+type KnowledgeBaseCreator interface {
+	Create(ctx context.Context, in service.CreateKnowledgeBaseInput) (int64, error)
+	List(ctx context.Context, in service.ListKnowledgeBasesInput) ([]domainmodel.KnowledgeBase, error)
+	GetByID(ctx context.Context, id int64) (*domainmodel.KnowledgeBase, error)
+	Update(ctx context.Context, in service.UpdateKnowledgeBaseInput) error
+	Delete(ctx context.Context, id int64) error
+}
+
+type DocumentLister interface {
+	ListByKnowledgeBase(ctx context.Context, knowledgeBaseName string, page int, size int) ([]domainmodel.Document, int64, error)
+	Delete(ctx context.Context, id int64) error
+}
+
+type ChunkLister interface {
+	ListByDocumentID(ctx context.Context, documentID int64, page int, size int) ([]domainmodel.Chunk, int64, error)
+	DeleteByID(ctx context.Context, id int64) error
+	UpdateStatusByIDs(ctx context.Context, ids []int64, status int) error
+	UpdateContentByID(ctx context.Context, id int64, content string) error
+}
+
+type Indexer interface {
+	Index(ctx context.Context, in service.IndexInput) ([]string, error)
+}
+
+type Retriever interface {
+	Retrieve(ctx context.Context, in service.RetrieveInput) ([]domainmodel.RetrievedChunk, error)
+}
+
+type Handler struct {
+	knowledgeBase KnowledgeBaseCreator
+	document      DocumentLister
+	chunk         ChunkLister
+	indexer       Indexer
+	retriever     Retriever
+}
+
+func NewHandler(knowledgeBase KnowledgeBaseCreator, document DocumentLister, chunk ChunkLister, indexer Indexer, retriever Retriever) *Handler {
+	return &Handler{knowledgeBase: knowledgeBase, document: document, chunk: chunk, indexer: indexer, retriever: retriever}
+}
+
+func (h *Handler) writeBindError(c *gin.Context, err error) {
+	webmiddleware.WriteBadRequest(c, err.Error())
+}
+
+func (h *Handler) writeServiceError(c *gin.Context, err error) {
+	webmiddleware.WriteInternalError(c, err.Error())
+}
+
+func (h *Handler) NotImplemented(c *gin.Context) {
+	webmiddleware.WriteJSON(c, http.StatusNotImplemented, webmiddleware.CodeInternalError, "接口暂未实现", nil)
+}
+
+func (h *Handler) writeDependencyMissing(c *gin.Context) {
+	webmiddleware.WriteServiceUnavailable(c, "服务未配置")
+}

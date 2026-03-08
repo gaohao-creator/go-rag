@@ -1,0 +1,753 @@
+﻿openapi: 3.0.3
+info:
+  title: go-rag Backend API
+  version: 0.1.0
+  license:
+    name: Proprietary
+  description: |
+    根据当前 `backend` HTTP 路由生成的 OpenAPI 文档。
+
+    当前覆盖阶段一能力：
+    - 知识库管理
+    - 文档管理
+    - Chunk 管理
+    - 文档索引
+    - 检索
+servers:
+  - url: http://127.0.0.1:8080
+    description: 本地默认启动地址
+security: []
+
+tags:
+  - name: health
+    description: 健康检查接口
+  - name: kb
+    description: 知识库管理接口
+  - name: documents
+    description: 文档管理接口
+  - name: chunks
+    description: Chunk 管理接口
+  - name: indexer
+    description: 文档索引接口
+  - name: retriever
+    description: 检索接口
+
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      summary: 健康检查
+      operationId: healthz
+      responses:
+        '200':
+          description: 服务可用
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/kb:
+    post:
+      tags: [kb]
+      summary: 创建知识库
+      operationId: createKnowledgeBase
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeBaseCreateRequest'
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeBaseCreateEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    get:
+      tags: [kb]
+      summary: 获取知识库列表
+      operationId: listKnowledgeBases
+      parameters:
+        - in: query
+          name: name
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: integer
+            format: int32
+        - in: query
+          name: category
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeBaseListEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/kb/{id}:
+    get:
+      tags: [kb]
+      summary: 获取单个知识库
+      operationId: getKnowledgeBase
+      parameters:
+        - $ref: '#/components/parameters/KnowledgeBaseID'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeBaseGetEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      tags: [kb]
+      summary: 更新知识库
+      operationId: updateKnowledgeBase
+      parameters:
+        - $ref: '#/components/parameters/KnowledgeBaseID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeBaseUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      tags: [kb]
+      summary: 删除知识库
+      operationId: deleteKnowledgeBase
+      parameters:
+        - $ref: '#/components/parameters/KnowledgeBaseID'
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/documents:
+    get:
+      tags: [documents]
+      summary: 获取文档列表
+      operationId: listDocuments
+      parameters:
+        - in: query
+          name: knowledge_name
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - in: query
+          name: size
+          schema:
+            type: integer
+            format: int32
+            default: 10
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      tags: [documents]
+      summary: 删除文档
+      operationId: deleteDocument
+      parameters:
+        - in: query
+          name: document_id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/chunks:
+    get:
+      tags: [chunks]
+      summary: 获取 Chunk 列表
+      operationId: listChunks
+      parameters:
+        - in: query
+          name: knowledge_doc_id
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: page
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - in: query
+          name: size
+          schema:
+            type: integer
+            format: int32
+            default: 10
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChunkListEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    put:
+      tags: [chunks]
+      summary: 批量更新 Chunk 状态
+      operationId: updateChunkStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChunkStatusUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    delete:
+      tags: [chunks]
+      summary: 删除单个 Chunk
+      operationId: deleteChunk
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/chunks-content:
+    put:
+      tags: [chunks]
+      summary: 更新 Chunk 内容
+      operationId: updateChunkContent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChunkContentUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmptyEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/indexer:
+    post:
+      tags: [indexer]
+      summary: 索引文档
+      operationId: indexDocument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IndexRequest'
+          multipart/form-data:
+            schema:
+              type: object
+              required: [knowledge_name, file]
+              properties:
+                knowledge_name:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+                uri:
+                  type: string
+                url:
+                  type: string
+                file_name:
+                  type: string
+      responses:
+        '200':
+          description: 索引成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /api/v1/retriever:
+    post:
+      tags: [retriever]
+      summary: 检索 Chunk
+      operationId: retrieveChunks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetrieveRequest'
+      responses:
+        '200':
+          description: 检索成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RetrieveEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+
+components:
+  parameters:
+    KnowledgeBaseID:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+  responses:
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    InternalError:
+      description: 服务内部错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ServiceUnavailable:
+      description: 服务未装配或不可用
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+  schemas:
+    ResponseBase:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          example: 0
+        message:
+          type: string
+          example: ok
+
+    ErrorEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              nullable: true
+              example: null
+
+    EmptyData:
+      type: object
+      additionalProperties: false
+
+    EmptyEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/EmptyData'
+
+    HealthEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          properties:
+            data:
+              type: string
+              example: pong
+
+    KnowledgeBase:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        status:
+          type: integer
+        create_time:
+          type: string
+          format: date-time
+        update_time:
+          type: string
+          format: date-time
+
+    Document:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        knowledge_base_name:
+          type: string
+        file_name:
+          type: string
+        status:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Chunk:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        knowledge_doc_id:
+          type: integer
+          format: int64
+        chunk_id:
+          type: string
+        content:
+          type: string
+        ext:
+          type: string
+        status:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    RetrievedChunk:
+      type: object
+      properties:
+        knowledge_doc_id:
+          type: integer
+          format: int64
+        chunk_id:
+          type: string
+        content:
+          type: string
+        ext:
+          type: string
+        score:
+          type: number
+          format: double
+
+    KnowledgeBaseCreateRequest:
+      type: object
+      required: [name, description]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+
+    KnowledgeBaseUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        status:
+          type: integer
+
+    KnowledgeBaseCreateData:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+
+    KnowledgeBaseCreateEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/KnowledgeBaseCreateData'
+
+    KnowledgeBaseListData:
+      type: object
+      properties:
+        list:
+          type: array
+          items:
+            $ref: '#/components/schemas/KnowledgeBase'
+
+    KnowledgeBaseListEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/KnowledgeBaseListData'
+
+    KnowledgeBaseGetEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/KnowledgeBase'
+
+    DocumentListData:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+
+    DocumentListEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/DocumentListData'
+
+    ChunkListData:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Chunk'
+        total:
+          type: integer
+          format: int64
+        page:
+          type: integer
+        size:
+          type: integer
+
+    ChunkListEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ChunkListData'
+
+    IndexRequest:
+      type: object
+      required: [knowledge_name]
+      properties:
+        uri:
+          type: string
+        url:
+          type: string
+        knowledge_name:
+          type: string
+        file_name:
+          type: string
+
+    IndexResponseData:
+      type: object
+      properties:
+        doc_ids:
+          type: array
+          items:
+            type: string
+
+    IndexEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/IndexResponseData'
+
+    RetrieveRequest:
+      type: object
+      required: [question, knowledge_name]
+      properties:
+        question:
+          type: string
+        top_k:
+          type: integer
+        score:
+          type: number
+          format: double
+        knowledge_name:
+          type: string
+
+    RetrieveResponseData:
+      type: object
+      properties:
+        document:
+          type: array
+          items:
+            $ref: '#/components/schemas/RetrievedChunk'
+
+    RetrieveEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ResponseBase'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/RetrieveResponseData'
+
+    ChunkStatusUpdateRequest:
+      type: object
+      required: [ids, status]
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+        status:
+          type: integer
+
+    ChunkContentUpdateRequest:
+      type: object
+      required: [id, content]
+      properties:
+        id:
+          type: integer
+          format: int64
+        content:
+          type: string
+
+

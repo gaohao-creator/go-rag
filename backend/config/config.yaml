@@ -1,0 +1,9 @@
+﻿http:
+  port: "8080"
+
+database:
+  driver: "mysql"
+  dsn: "root:abc123@tcp(127.0.0.1:3306)/go_rag?charset=utf8mb4&parseTime=True&loc=Local"
+  max_idle_conns: 10
+  max_open_conns: 50
+  conn_max_lifetime_seconds: 1800
