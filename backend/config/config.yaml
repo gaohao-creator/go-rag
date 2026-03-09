@@ -7,3 +7,10 @@ database:
   max_idle_conns: 10
   max_open_conns: 50
   conn_max_lifetime_seconds: 1800
+
+chat:
+  provider: "openai"
+  api_key: ""
+  base_url: ""
+  model: "qwen3-max"
+  system_prompt: "你是一个专业的 AI 助手，请基于提供的参考内容回答问题。"

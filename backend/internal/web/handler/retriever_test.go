@@ -24,7 +24,7 @@ func (f *fakeRetrieverService) Retrieve(_ context.Context, in service.RetrieveIn
 }
 
 func TestRetrieverHandler_Retrieve(t *testing.T) {
-	h := webhandler.NewHandler(nil, nil, nil, nil, &fakeRetrieverService{})
+	h := webhandler.NewHandler(nil, nil, nil, nil, &fakeRetrieverService{}, nil)
 	engine := webrouter.NewRouter(h)
 	body := bytes.NewBufferString(`{"question":"什么是RAG","knowledge_name":"demo"}`)
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/retriever", body)
@@ -52,3 +52,5 @@ func TestRetrieverHandler_Retrieve(t *testing.T) {
 		t.Fatalf("expected chunk-1, got %s", payload.Data.Document[0].ChunkID)
 	}
 }
+
+

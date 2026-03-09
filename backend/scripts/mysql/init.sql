@@ -1,4 +1,4 @@
-﻿CREATE DATABASE IF NOT EXISTS `go_rag`
+CREATE DATABASE IF NOT EXISTS `go_rag`
   DEFAULT CHARACTER SET utf8mb4
   COLLATE utf8mb4_general_ci;
 
@@ -41,4 +41,15 @@ CREATE TABLE IF NOT EXISTS `knowledge_chunks` (
   KEY `idx_chunks_knowledge_doc_id` (`knowledge_doc_id`),
   KEY `idx_chunks_chunk_id` (`chunk_id`),
   KEY `idx_chunks_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE IF NOT EXISTS `chat_messages` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `conv_id` VARCHAR(64) NOT NULL,
+  `role` VARCHAR(16) NOT NULL,
+  `content` LONGTEXT NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_chat_messages_conv_id` (`conv_id`),
+  KEY `idx_chat_messages_role` (`role`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

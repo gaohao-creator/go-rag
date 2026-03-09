@@ -1,7 +1,9 @@
-package handler
+﻿package handler
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
 
 	domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
@@ -38,16 +40,22 @@ type Retriever interface {
 	Retrieve(ctx context.Context, in service.RetrieveInput) ([]domainmodel.RetrievedChunk, error)
 }
 
+type Chatter interface {
+	Chat(ctx context.Context, in service.ChatInput) (*service.ChatResult, error)
+	ChatStream(ctx context.Context, in service.ChatInput) (*service.ChatStreamResult, error)
+}
+
 type Handler struct {
 	knowledgeBase KnowledgeBaseCreator
 	document      DocumentLister
 	chunk         ChunkLister
 	indexer       Indexer
 	retriever     Retriever
+	chat          Chatter
 }
 
-func NewHandler(knowledgeBase KnowledgeBaseCreator, document DocumentLister, chunk ChunkLister, indexer Indexer, retriever Retriever) *Handler {
-	return &Handler{knowledgeBase: knowledgeBase, document: document, chunk: chunk, indexer: indexer, retriever: retriever}
+func NewHandler(knowledgeBase KnowledgeBaseCreator, document DocumentLister, chunk ChunkLister, indexer Indexer, retriever Retriever, chat Chatter) *Handler {
+	return &Handler{knowledgeBase: knowledgeBase, document: document, chunk: chunk, indexer: indexer, retriever: retriever, chat: chat}
 }
 
 func (h *Handler) writeBindError(c *gin.Context, err error) {
@@ -64,4 +72,15 @@ func (h *Handler) NotImplemented(c *gin.Context) {
 
 func (h *Handler) writeDependencyMissing(c *gin.Context) {
 	webmiddleware.WriteServiceUnavailable(c, "服务未配置")
+}
+
+func writeSSEEvent(c *gin.Context, event string, data string) {
+	_, _ = fmt.Fprintf(c.Writer, "event: %s\n", event)
+	_, _ = fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+	c.Writer.Flush()
+}
+
+func encodeJSON(value any) string {
+	payload, _ := json.Marshal(value)
+	return string(payload)
 }

@@ -26,7 +26,7 @@ func (f *fakeKBService) Update(_ context.Context, _ service.UpdateKnowledgeBaseI
 func (f *fakeKBService) Delete(_ context.Context, _ int64) error { return nil }
 
 func TestKnowledgeBaseHandler_Create(t *testing.T) {
-	h := webhandler.NewHandler(&fakeKBService{}, nil, nil, nil, nil)
+	h := webhandler.NewHandler(&fakeKBService{}, nil, nil, nil, nil, nil)
 	engine := webrouter.NewRouter(h)
 	body := bytes.NewBufferString(`{"name":"demo","description":"desc","category":"general"}`)
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/kb", body)
@@ -52,3 +52,5 @@ func TestKnowledgeBaseHandler_Create(t *testing.T) {
 		t.Fatalf("expected id 12, got %d", payload.Data.ID)
 	}
 }
+
+

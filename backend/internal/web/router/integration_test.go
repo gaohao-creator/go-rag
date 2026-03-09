@@ -21,7 +21,7 @@ func writeRouterTestConfig(t *testing.T) string {
 	t.Helper()
 	configPath := filepath.Join(t.TempDir(), "config.yaml")
 	dsnName := strings.ReplaceAll(strings.ToLower(t.Name()), "/", "_")
-	content := []byte(fmt.Sprintf("http:\n  port: \"18082\"\n\ndatabase:\n  driver: \"sqlite\"\n  dsn: \"file:%s?mode=memory&cache=shared\"\n  max_idle_conns: 1\n  max_open_conns: 1\n  conn_max_lifetime_seconds: 60\n", dsnName))
+	content := []byte(fmt.Sprintf("http:\n  port: \"18082\"\n\ndatabase:\n  driver: \"sqlite\"\n  dsn: \"file:%s?mode=memory&cache=shared\"\n  max_idle_conns: 1\n  max_open_conns: 1\n  conn_max_lifetime_seconds: 60\n\nchat:\n  provider: \"fake\"\n", dsnName))
 	if err := os.WriteFile(configPath, content, 0o644); err != nil {
 		t.Fatalf("WriteFile returned error: %v", err)
 	}
@@ -213,3 +213,6 @@ func TestIntegration_DocumentDeleteAndChunkMutations(t *testing.T) {
 		t.Fatalf("expected 0 documents after delete, got %d", len(documentsPayload.Data.Data))
 	}
 }
+
+
+

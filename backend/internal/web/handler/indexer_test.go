@@ -23,7 +23,7 @@ func (f *fakeIndexerService) Index(_ context.Context, in service.IndexInput) ([]
 }
 
 func TestIndexerHandler_Index(t *testing.T) {
-	h := webhandler.NewHandler(nil, nil, nil, &fakeIndexerService{}, nil)
+	h := webhandler.NewHandler(nil, nil, nil, &fakeIndexerService{}, nil, nil)
 	engine := webrouter.NewRouter(h)
 	body := bytes.NewBufferString(`{"uri":"testdata/index.txt","knowledge_name":"demo","file_name":"index.txt"}`)
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/indexer", body)
@@ -48,3 +48,5 @@ func TestIndexerHandler_Index(t *testing.T) {
 		t.Fatalf("expected 2 ids, got %d", len(payload.Data.DocIDs))
 	}
 }
+
+

@@ -11,8 +11,12 @@ import (
 
 func writeTestConfig(t *testing.T) string {
 	t.Helper()
+	t.Setenv("GO_RAG_CHAT_PROVIDER", "fake")
+	t.Setenv("GO_RAG_CHAT_API_KEY", "")
+	t.Setenv("GO_RAG_CHAT_BASE_URL", "")
+	t.Setenv("GO_RAG_CHAT_MODEL", "")
 	configPath := filepath.Join(t.TempDir(), "config.yaml")
-	content := []byte("http:\n  port: \"18080\"\n\ndatabase:\n  driver: \"sqlite\"\n  dsn: \"file:task10_app?mode=memory&cache=shared\"\n  max_idle_conns: 1\n  max_open_conns: 1\n  conn_max_lifetime_seconds: 60\n")
+	content := []byte("http:\n  port: \"18080\"\n\ndatabase:\n  driver: \"sqlite\"\n  dsn: \"file:task10_app?mode=memory&cache=shared\"\n  max_idle_conns: 1\n  max_open_conns: 1\n  conn_max_lifetime_seconds: 60\n\nchat:\n  provider: \"fake\"\n")
 	if err := os.WriteFile(configPath, content, 0o644); err != nil {
 		t.Fatalf("WriteFile returned error: %v", err)
 	}

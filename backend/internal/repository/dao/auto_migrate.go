@@ -15,5 +15,6 @@ func AutoMigrate(db *gorm.DB) error {
 		&daoentity.KnowledgeBase{},
 		&daoentity.Document{},
 		&daoentity.Chunk{},
+		&daoentity.Message{},
 	)
 }

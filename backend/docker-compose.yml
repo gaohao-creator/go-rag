@@ -22,6 +22,10 @@
       timeout: 5s
       retries: 10
       start_period: 20s
+  whodb:
+    image: clidey/whodb
+    ports:
+      - "8082:8080"
 
 volumes:
   mysql-data:

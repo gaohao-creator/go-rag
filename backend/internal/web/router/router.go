@@ -35,4 +35,6 @@ func registerAPIRoutes(engine *gin.Engine, h *webhandler.Handler) {
 
 	api.POST("/indexer", h.Index)
 	api.POST("/retriever", h.Retrieve)
+	api.POST("/chat", h.Chat)
+	api.POST("/chat/stream", h.ChatStream)
 }
