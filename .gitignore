@@ -3,6 +3,7 @@
 !/docs/
 !/docs/plans/
 !/docs/plans/**
+/.worktrees/
 /.idea/
 /backend/.gocache/
 *.exe
