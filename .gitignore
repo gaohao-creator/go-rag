@@ -1,5 +1,8 @@
 /server/
-/docs/
+/docs/*
+!/docs/
+!/docs/plans/
+!/docs/plans/**
 /.idea/
 /backend/.gocache/
 *.exe
