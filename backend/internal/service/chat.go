@@ -1,4 +1,4 @@
-﻿package service
+package service
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
 	domainrepo "github.com/gaohao-creator/go-rag/internal/domain/repository"
 	domainservice "github.com/gaohao-creator/go-rag/internal/domain/service"
+	apprag "github.com/gaohao-creator/go-rag/internal/rag"
 )
 
 type ChatRetriever interface {
@@ -38,14 +39,26 @@ type ChatService struct {
 	retriever   ChatRetriever
 	model       domainservice.ChatModel
 	streamModel domainservice.ChatStreamModel
+	rag         *apprag.RAG
 }
 
-func NewChatService(history domainrepo.MessageRepository, retriever ChatRetriever, model domainservice.ChatModel) *ChatService {
+func NewChatService(
+	history domainrepo.MessageRepository,
+	retriever ChatRetriever,
+	model domainservice.ChatModel,
+	rag *apprag.RAG,
+) *ChatService {
 	var streamModel domainservice.ChatStreamModel
 	if value, ok := any(model).(domainservice.ChatStreamModel); ok {
 		streamModel = value
 	}
-	return &ChatService{history: history, retriever: retriever, model: model, streamModel: streamModel}
+	return &ChatService{
+		history:     history,
+		retriever:   retriever,
+		model:       model,
+		streamModel: streamModel,
+		rag:         rag,
+	}
 }
 
 func (s *ChatService) Chat(ctx context.Context, in ChatInput) (*ChatResult, error) {
@@ -65,6 +78,9 @@ func (s *ChatService) Chat(ctx context.Context, in ChatInput) (*ChatResult, erro
 	}
 	answer, err := s.model.Generate(ctx, domainservice.ChatGenerateInput{ConvID: in.ConvID, Question: in.Question, History: history, References: references})
 	if err != nil {
+		return nil, err
+	}
+	if err = s.gradeAnswer(ctx, in.Question, answer, references); err != nil {
 		return nil, err
 	}
 	if err = s.history.Create(ctx, domainmodel.Message{ConvID: in.ConvID, Role: domainmodel.MessageRoleAssistant, Content: answer}); err != nil {
@@ -96,6 +112,9 @@ func (s *ChatService) ChatStream(ctx context.Context, in ChatInput) (*ChatStream
 		return nil, err
 	}
 	answer := strings.Join(chunks, "")
+	if err = s.gradeAnswer(ctx, in.Question, answer, references); err != nil {
+		return nil, err
+	}
 	if err = s.history.Create(ctx, domainmodel.Message{ConvID: in.ConvID, Role: domainmodel.MessageRoleAssistant, Content: answer}); err != nil {
 		return nil, err
 	}
@@ -111,6 +130,26 @@ func (s *ChatService) validateChatInput(in ChatInput) error {
 	}
 	if strings.TrimSpace(in.KnowledgeName) == "" {
 		return errors.New("知识库名称不能为空")
+	}
+	return nil
+}
+
+func (s *ChatService) gradeAnswer(
+	ctx context.Context,
+	question string,
+	answer string,
+	references []domainmodel.RetrievedChunk,
+) error {
+	pass, err := s.rag.Grade(ctx, domainservice.GradeInput{
+		Question:   question,
+		Answer:     answer,
+		References: references,
+	})
+	if err != nil {
+		return err
+	}
+	if !pass {
+		return errors.New("回答未通过质量检查")
 	}
 	return nil
 }

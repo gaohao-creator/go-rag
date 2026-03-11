@@ -1,4 +1,4 @@
-﻿package service
+package service
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
 	domainservice "github.com/gaohao-creator/go-rag/internal/domain/service"
+	apprag "github.com/gaohao-creator/go-rag/internal/rag"
 )
 
 type RetrieveInput struct {
@@ -18,11 +19,11 @@ type RetrieveInput struct {
 }
 
 type RetrieverService struct {
-	engine domainservice.Retriever
+	rag *apprag.RAG
 }
 
-func NewRetrieverService(engine domainservice.Retriever) *RetrieverService {
-	return &RetrieverService{engine: engine}
+func NewRetrieverService(rag *apprag.RAG) *RetrieverService {
+	return &RetrieverService{rag: rag}
 }
 
 func (s *RetrieverService) Retrieve(ctx context.Context, in RetrieveInput) ([]domainmodel.RetrievedChunk, error) {
@@ -38,12 +39,13 @@ func (s *RetrieverService) Retrieve(ctx context.Context, in RetrieveInput) ([]do
 	if in.Score == 0 {
 		in.Score = 0.2
 	}
-	chunks, err := s.engine.Retrieve(ctx, domainservice.RetrieveRequest{
+	request := domainservice.RetrieveRequest{
 		Question:      in.Question,
 		TopK:          in.TopK,
 		Score:         in.Score,
 		KnowledgeName: in.KnowledgeName,
-	})
+	}
+	chunks, err := s.rag.Retrieve(ctx, request)
 	if err != nil {
 		return nil, err
 	}

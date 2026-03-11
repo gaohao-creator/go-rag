@@ -1,5 +1,5 @@
 ﻿http:
-  port: "8080"
+  port: "8000"
 
 database:
   driver: "mysql"
@@ -10,7 +10,40 @@ database:
 
 chat:
   provider: "openai"
-  api_key: ""
-  base_url: ""
   model: "qwen3-max"
+  base_url: "https://apis.iflow.cn/v1"
+  api_key: ""
   system_prompt: "你是一个专业的 AI 助手，请基于提供的参考内容回答问题。"
+
+vector:
+  enabled: true
+  backend: "es"
+  address: "http://127.0.0.1:9200"
+  username: ""
+  password: ""
+  index_prefix: "rag-"
+  content_field: "content"
+  content_vector_field: "content_vector"
+  qa_content_field: "qa_content"
+  qa_content_vector_field: "qa_content_vector"
+  knowledge_field: "_knowledge_name"
+  ext_field: "ext"
+  dimensions: 1024
+  embedding_model: "BAAI/bge-large-zh-v1.5"
+  embedding_base_url: "https://api.siliconflow.cn/"
+  embedding_api_key: ""
+
+rerank:
+  enabled: false
+  base_url: ""
+  api_key: ""
+  model: ""
+  top_n: 5
+  min_score: 0
+
+quality:
+  qa:
+    enabled: true
+    question_count: 3
+  grader:
+    enabled: false

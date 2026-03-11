@@ -1,6 +1,6 @@
 package dto
 
-import domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
+import "time"
 
 type KnowledgeBaseCreateRequest struct {
 	Name        string `json:"name" binding:"required"`
@@ -18,8 +18,18 @@ type KnowledgeBaseListRequest struct {
 	Category *string `form:"category"`
 }
 
+type KnowledgeBaseView struct {
+	ID          int64     `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Category    string    `json:"category"`
+	Status      int       `json:"status"`
+	CreateTime  time.Time `json:"createTime"`
+	UpdateTime  time.Time `json:"updateTime"`
+}
+
 type KnowledgeBaseListResponse struct {
-	List []domainmodel.KnowledgeBase `json:"list"`
+	List []KnowledgeBaseView `json:"list"`
 }
 
 type KnowledgeBaseUpdateRequest struct {

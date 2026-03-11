@@ -22,6 +22,29 @@
       timeout: 5s
       retries: 10
       start_period: 20s
+
+  elasticsearch:
+    image: elasticsearch:8.11.3
+    container_name: go-rag-es
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "cluster.routing.allocation.disk.watermark.low=1gb"     # 低于 1GB 停止分配
+      - "cluster.routing.allocation.disk.watermark.high=1gb"    # 低于 1GB 迁移分片
+      - "cluster.routing.allocation.disk.watermark.flood_stage=1gb"  # 低于 1GB 设为只读
+    ports:
+      - "9200:9200"
+    volumes:
+      - ./data/es_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+
   whodb:
     image: clidey/whodb
     ports:

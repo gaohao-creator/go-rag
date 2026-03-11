@@ -1,14 +1,16 @@
-﻿package service
+package service
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
 	domainrepo "github.com/gaohao-creator/go-rag/internal/domain/repository"
 	domainservice "github.com/gaohao-creator/go-rag/internal/domain/service"
+	apprag "github.com/gaohao-creator/go-rag/internal/rag"
 )
 
 const (
@@ -27,14 +29,18 @@ type IndexInput struct {
 type IndexerService struct {
 	documentRepo domainrepo.DocumentRepository
 	chunkRepo    domainrepo.ChunkRepository
-	engine       domainservice.Indexer
+	rag          *apprag.RAG
 }
 
-func NewIndexerService(documentRepo domainrepo.DocumentRepository, chunkRepo domainrepo.ChunkRepository, engine domainservice.Indexer) *IndexerService {
+func NewIndexerService(
+	documentRepo domainrepo.DocumentRepository,
+	chunkRepo domainrepo.ChunkRepository,
+	rag *apprag.RAG,
+) *IndexerService {
 	return &IndexerService{
 		documentRepo: documentRepo,
 		chunkRepo:    chunkRepo,
-		engine:       engine,
+		rag:          rag,
 	}
 }
 
@@ -58,7 +64,7 @@ func (s *IndexerService) Index(ctx context.Context, in IndexInput) ([]string, er
 		return nil, err
 	}
 
-	indexedChunks, err := s.engine.Index(ctx, domainservice.IndexRequest{
+	indexedChunks, err := s.rag.Index(ctx, domainservice.IndexRequest{
 		URI:           in.URI,
 		KnowledgeName: in.KnowledgeName,
 	})
@@ -82,6 +88,9 @@ func (s *IndexerService) Index(ctx context.Context, in IndexInput) ([]string, er
 	if err = s.chunkRepo.BatchCreate(ctx, chunks); err != nil {
 		return nil, s.markDocumentFailed(ctx, documentID, err)
 	}
+	if err = s.writeVectorChunks(ctx, in.KnowledgeName, chunks); err != nil {
+		log.Printf("vector write skipped after failure: %v", err)
+	}
 	if err = s.documentRepo.UpdateStatus(ctx, documentID, DocumentStatusActive); err != nil {
 		return nil, fmt.Errorf("更新文档状态失败: %w", err)
 	}
@@ -93,4 +102,18 @@ func (s *IndexerService) markDocumentFailed(ctx context.Context, documentID int6
 		return fmt.Errorf("%w; 更新失败状态也失败: %v", sourceErr, err)
 	}
 	return sourceErr
+}
+
+func (s *IndexerService) writeVectorChunks(
+	ctx context.Context,
+	knowledgeName string,
+	chunks []domainmodel.Chunk,
+) error {
+	if len(chunks) == 0 {
+		return nil
+	}
+	return s.rag.Store(ctx, domainservice.ChunkStoreRequest{
+		KnowledgeName: knowledgeName,
+		Chunks:        chunks,
+	})
 }

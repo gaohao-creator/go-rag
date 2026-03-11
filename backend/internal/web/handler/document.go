@@ -27,7 +27,7 @@ func (h *Handler) ListDocuments(c *gin.Context) {
 		h.writeServiceError(c, err)
 		return
 	}
-	webmiddleware.WriteOK(c, dto.DocumentListResponse{Data: documents, Total: total, Page: req.Page, Size: req.Size})
+	webmiddleware.WriteOK(c, dto.DocumentListResponse{Data: toDocumentViews(documents), Total: total, Page: req.Page, Size: req.Size})
 }
 
 func (h *Handler) DeleteDocument(c *gin.Context) {

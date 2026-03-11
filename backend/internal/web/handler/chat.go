@@ -1,4 +1,4 @@
-﻿package handler
+package handler
 
 import (
 	"github.com/gaohao-creator/go-rag/api/dto"
@@ -17,12 +17,21 @@ func (h *Handler) Chat(c *gin.Context) {
 		h.writeBindError(c, err)
 		return
 	}
-	result, err := h.chat.Chat(c.Request.Context(), service.ChatInput{ConvID: req.ConvID, Question: req.Question, KnowledgeName: req.KnowledgeName, TopK: req.TopK, Score: req.Score})
+	result, err := h.chat.Chat(c.Request.Context(), service.ChatInput{
+		ConvID:        req.ConvID,
+		Question:      req.Question,
+		KnowledgeName: req.KnowledgeName,
+		TopK:          req.TopK,
+		Score:         req.Score,
+	})
 	if err != nil {
 		h.writeServiceError(c, err)
 		return
 	}
-	webmiddleware.WriteOK(c, dto.ChatResponse{Answer: result.Answer, References: result.References})
+	webmiddleware.WriteOK(c, dto.ChatResponse{
+		Answer:     result.Answer,
+		References: toSchemaDocuments(result.References),
+	})
 }
 
 func (h *Handler) ChatStream(c *gin.Context) {
@@ -35,17 +44,37 @@ func (h *Handler) ChatStream(c *gin.Context) {
 		h.writeBindError(c, err)
 		return
 	}
-	result, err := h.chat.ChatStream(c.Request.Context(), service.ChatInput{ConvID: req.ConvID, Question: req.Question, KnowledgeName: req.KnowledgeName, TopK: req.TopK, Score: req.Score})
+	result, err := h.chat.ChatStream(c.Request.Context(), service.ChatInput{
+		ConvID:        req.ConvID,
+		Question:      req.Question,
+		KnowledgeName: req.KnowledgeName,
+		TopK:          req.TopK,
+		Score:         req.Score,
+	})
 	if err != nil {
 		h.writeServiceError(c, err)
 		return
 	}
+
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("Connection", "keep-alive")
-	writeSSEEvent(c, "references", encodeJSON(result.References))
-	for _, chunk := range result.Chunks {
-		writeSSEEvent(c, "message", chunk)
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+
+	streamData := newLegacyStreamData()
+	documents := toSchemaDocuments(result.References)
+	if len(documents) > 0 {
+		streamData.Document = documents
+		writeLegacyStreamDocuments(c, streamData)
+		streamData.Document = nil
 	}
-	writeSSEEvent(c, "done", "[DONE]")
+	for _, chunk := range result.Chunks {
+		if chunk == "" {
+			continue
+		}
+		streamData.Content = chunk
+		writeLegacyStreamData(c, streamData)
+	}
+	writeLegacyStreamDone(c)
 }

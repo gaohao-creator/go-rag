@@ -1,4 +1,4 @@
-﻿package router
+package router
 
 import (
 	"github.com/gin-gonic/gin"
@@ -32,9 +32,11 @@ func registerAPIRoutes(engine *gin.Engine, h *webhandler.Handler) {
 	api.DELETE("/chunks", h.DeleteChunk)
 	api.PUT("/chunks", h.UpdateChunkStatus)
 	api.PUT("/chunks-content", h.UpdateChunkContent)
+	api.PUT("/chunks_content", h.UpdateChunkContent)
 
 	api.POST("/indexer", h.Index)
 	api.POST("/retriever", h.Retrieve)
+	api.POST("/dify/retrieval", h.RetrieveDify)
 	api.POST("/chat", h.Chat)
 	api.POST("/chat/stream", h.ChatStream)
 }

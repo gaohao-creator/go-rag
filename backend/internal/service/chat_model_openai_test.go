@@ -84,3 +84,28 @@ func TestOpenAICompatibleChatModel_GenerateStreamCollectsChunks(t *testing.T) {
 		t.Fatalf("unexpected stream output: %v", chunks)
 	}
 }
+
+func TestOpenAICompatibleChatModel_GeneratePromptBuildsSystemAndUserMessages(t *testing.T) {
+	raw := &fakeRawChatModel{}
+	model := NewOpenAICompatibleChatModel(raw, "你是一个专业的 AI 助手")
+
+	answer, err := model.GeneratePrompt(context.Background(), domainservice.PromptGenerateInput{
+		SystemPrompt: "你是一个问题生成助手",
+		UserPrompt:   "RAG 是检索增强生成。",
+	})
+	if err != nil {
+		t.Fatalf("GeneratePrompt returned error: %v", err)
+	}
+	if answer != "真实模型回答" {
+		t.Fatalf("unexpected answer: %s", answer)
+	}
+	if len(raw.lastMessages) != 2 {
+		t.Fatalf("expected 2 prompt messages, got %d", len(raw.lastMessages))
+	}
+	if raw.lastMessages[0].Role != schema.System || raw.lastMessages[0].Content != "你是一个问题生成助手" {
+		t.Fatalf("unexpected system message: %+v", raw.lastMessages[0])
+	}
+	if raw.lastMessages[1].Role != schema.User || raw.lastMessages[1].Content != "RAG 是检索增强生成。" {
+		t.Fatalf("unexpected user message: %+v", raw.lastMessages[1])
+	}
+}

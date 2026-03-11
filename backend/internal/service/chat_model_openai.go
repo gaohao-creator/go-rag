@@ -54,6 +54,17 @@ func (m *OpenAICompatibleChatModel) Generate(ctx context.Context, in domainservi
 	return message.Content, nil
 }
 
+func (m *OpenAICompatibleChatModel) GeneratePrompt(ctx context.Context, in domainservice.PromptGenerateInput) (string, error) {
+	message, err := m.model.Generate(ctx, []*schema.Message{
+		schema.SystemMessage(strings.TrimSpace(in.SystemPrompt)),
+		schema.UserMessage(strings.TrimSpace(in.UserPrompt)),
+	})
+	if err != nil {
+		return "", err
+	}
+	return message.Content, nil
+}
+
 func (m *OpenAICompatibleChatModel) GenerateStream(ctx context.Context, in domainservice.ChatGenerateInput) ([]string, error) {
 	reader, err := m.model.Stream(ctx, m.buildMessages(in))
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/cloudwego/eino/schema"
 	domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
 	"github.com/gaohao-creator/go-rag/internal/service"
 	webhandler "github.com/gaohao-creator/go-rag/internal/web/handler"
@@ -19,14 +20,14 @@ type fakeChatService struct{}
 func (f *fakeChatService) Chat(_ context.Context, in service.ChatInput) (*service.ChatResult, error) {
 	return &service.ChatResult{
 		Answer: "模拟回答: " + in.Question,
-		References: []domainmodel.RetrievedChunk{{ChunkID: "chunk-1", Content: "RAG 是检索增强生成。", Score: 0.9}},
+		References: []domainmodel.RetrievedChunk{{ChunkID: "chunk-1", Content: "RAG 是检索增强生成。", Ext: "{\"source\":\"demo\"}", Score: 0.9}},
 	}, nil
 }
 
 func (f *fakeChatService) ChatStream(_ context.Context, in service.ChatInput) (*service.ChatStreamResult, error) {
 	return &service.ChatStreamResult{
 		Answer:     "模拟回答: " + in.Question,
-		References: []domainmodel.RetrievedChunk{{ChunkID: "chunk-1", Content: "RAG 是检索增强生成。", Score: 0.9}},
+		References: []domainmodel.RetrievedChunk{{ChunkID: "chunk-1", Content: "RAG 是检索增强生成。", Ext: "{\"source\":\"demo\"}", Score: 0.9}},
 		Chunks:     []string{"模拟回答: ", in.Question},
 	}, nil
 }
@@ -46,8 +47,8 @@ func TestChatHandler_Chat(t *testing.T) {
 	var payload struct {
 		Code int `json:"code"`
 		Data struct {
-			Answer     string                       `json:"answer"`
-			References []domainmodel.RetrievedChunk `json:"references"`
+			Answer     string             `json:"answer"`
+			References []*schema.Document `json:"references"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
@@ -58,5 +59,8 @@ func TestChatHandler_Chat(t *testing.T) {
 	}
 	if len(payload.Data.References) != 1 {
 		t.Fatalf("expected 1 reference, got %d", len(payload.Data.References))
+	}
+	if payload.Data.References[0].ID != "chunk-1" {
+		t.Fatalf("expected chunk-1, got %s", payload.Data.References[0].ID)
 	}
 }

@@ -24,7 +24,7 @@ func (f *fakeChatStreamService) ChatStream(_ context.Context, in service.ChatInp
 	return &service.ChatStreamResult{
 		Answer: "模拟回答: " + in.Question,
 		References: []domainmodel.RetrievedChunk{
-			{ChunkID: "chunk-1", Content: "RAG 是检索增强生成。", Score: 0.9},
+			{ChunkID: "chunk-1", Content: "RAG 是检索增强生成。", Ext: "{\"source\":\"demo\"}", Score: 0.9},
 		},
 		Chunks: []string{"模拟回答", ": ", in.Question},
 	}, nil
@@ -46,11 +46,11 @@ func TestChatHandler_ChatStream(t *testing.T) {
 		t.Fatalf("expected event-stream content type, got %s", response.Header().Get("Content-Type"))
 	}
 	body := response.Body.String()
-	if !strings.Contains(body, "event: references") {
-		t.Fatalf("expected references event, got %s", body)
+	if !strings.Contains(body, "documents:") {
+		t.Fatalf("expected documents prefix, got %s", body)
 	}
-	if !strings.Contains(body, "event: message") {
-		t.Fatalf("expected message event, got %s", body)
+	if !strings.Contains(body, "data:") {
+		t.Fatalf("expected data prefix, got %s", body)
 	}
 	if !strings.Contains(body, "[DONE]") {
 		t.Fatalf("expected done marker, got %s", body)

@@ -42,7 +42,7 @@ func (h *Handler) ListKnowledgeBases(c *gin.Context) {
 		h.writeServiceError(c, err)
 		return
 	}
-	webmiddleware.WriteOK(c, dto.KnowledgeBaseListResponse{List: list})
+	webmiddleware.WriteOK(c, dto.KnowledgeBaseListResponse{List: toKnowledgeBaseViews(list)})
 }
 
 func (h *Handler) GetKnowledgeBase(c *gin.Context) {
@@ -60,7 +60,7 @@ func (h *Handler) GetKnowledgeBase(c *gin.Context) {
 		h.writeServiceError(c, err)
 		return
 	}
-	webmiddleware.WriteOK(c, kb)
+	webmiddleware.WriteOK(c, toKnowledgeBaseView(kb))
 }
 
 func (h *Handler) UpdateKnowledgeBase(c *gin.Context) {

@@ -29,3 +29,17 @@ func TestFakeChatModel_GenerateAnswerIncludesQuestionAndReferences(t *testing.T)
 	}
 	fmt.Println(answer)
 }
+
+func TestFakeChatModel_GeneratePromptUsesUserPrompt(t *testing.T) {
+	model := NewFakeChatModel()
+	answer, err := model.GeneratePrompt(context.Background(), domainservice.PromptGenerateInput{
+		SystemPrompt: "你是一个问题生成助手",
+		UserPrompt:   "RAG 是检索增强生成。",
+	})
+	if err != nil {
+		t.Fatalf("GeneratePrompt returned error: %v", err)
+	}
+	if !strings.Contains(answer, "RAG 是检索增强生成") {
+		t.Fatalf("expected answer to contain user prompt, got %s", answer)
+	}
+}

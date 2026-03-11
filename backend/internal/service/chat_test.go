@@ -1,4 +1,4 @@
-﻿package service
+package service
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
 	domainservice "github.com/gaohao-creator/go-rag/internal/domain/service"
+	apprag "github.com/gaohao-creator/go-rag/internal/rag"
 )
 
 type fakeMessageRepository struct {
@@ -45,11 +46,25 @@ func (f *fakeChatModel) GenerateStream(_ context.Context, in domainservice.ChatG
 	return []string{"模拟回答: ", in.Question}, nil
 }
 
+type fakeChatGrader struct {
+	request domainservice.GradeInput
+	pass    bool
+	err     error
+}
+
+func (f *fakeChatGrader) Grade(_ context.Context, in domainservice.GradeInput) (bool, error) {
+	f.request = in
+	if f.err != nil {
+		return false, f.err
+	}
+	return f.pass, nil
+}
+
 func TestChatService_ChatPersistsConversationAndReturnsAnswer(t *testing.T) {
 	history := newFakeMessageRepository()
 	retriever := &fakeChatRetriever{}
 	model := &fakeChatModel{}
-	svc := NewChatService(history, retriever, model)
+	svc := NewChatService(history, retriever, model, apprag.NewRAG(nil, nil, nil, nil))
 
 	result, err := svc.Chat(context.Background(), ChatInput{
 		ConvID:        "conv-1",
@@ -73,5 +88,54 @@ func TestChatService_ChatPersistsConversationAndReturnsAnswer(t *testing.T) {
 	}
 	if history.messages["conv-1"][1].Role != domainmodel.MessageRoleAssistant {
 		t.Fatalf("expected second role assistant, got %s", history.messages["conv-1"][1].Role)
+	}
+}
+
+func TestChatService_ChatUsesGraderWhenEnabled(t *testing.T) {
+	history := newFakeMessageRepository()
+	retriever := &fakeChatRetriever{}
+	model := &fakeChatModel{}
+	grader := &fakeChatGrader{pass: true}
+	svc := NewChatService(history, retriever, model, apprag.NewRAG(nil, nil, nil, grader))
+
+	result, err := svc.Chat(context.Background(), ChatInput{
+		ConvID:        "conv-2",
+		Question:      "什么是 RAG",
+		KnowledgeName: "demo",
+	})
+	if err != nil {
+		t.Fatalf("Chat returned error: %v", err)
+	}
+	if result.Answer == "" {
+		t.Fatal("expected answer")
+	}
+	if grader.request.Question != "什么是 RAG" {
+		t.Fatalf("expected grader question passthrough, got %s", grader.request.Question)
+	}
+	if grader.request.Answer == "" {
+		t.Fatal("expected grader to receive answer")
+	}
+	if len(grader.request.References) != 1 {
+		t.Fatalf("expected grader references, got %+v", grader.request.References)
+	}
+}
+
+func TestChatService_ChatRejectsAnswerWhenGraderDoesNotPass(t *testing.T) {
+	history := newFakeMessageRepository()
+	retriever := &fakeChatRetriever{}
+	model := &fakeChatModel{}
+	grader := &fakeChatGrader{pass: false}
+	svc := NewChatService(history, retriever, model, apprag.NewRAG(nil, nil, nil, grader))
+
+	_, err := svc.Chat(context.Background(), ChatInput{
+		ConvID:        "conv-3",
+		Question:      "什么是 RAG",
+		KnowledgeName: "demo",
+	})
+	if err == nil {
+		t.Fatal("expected grader reject error")
+	}
+	if history.CountByConversation("conv-3") != 1 {
+		t.Fatalf("expected only user message persisted, got %d", history.CountByConversation("conv-3"))
 	}
 }

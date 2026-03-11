@@ -27,6 +27,17 @@ func (m *FakeChatModel) Generate(_ context.Context, in domainservice.ChatGenerat
 	return fmt.Sprintf("模拟回答：你问的是“%s”。参考信息：%s", question, referenceSummary), nil
 }
 
+func (m *FakeChatModel) GeneratePrompt(_ context.Context, in domainservice.PromptGenerateInput) (string, error) {
+	userPrompt := strings.TrimSpace(in.UserPrompt)
+	if userPrompt == "" {
+		return "", fmt.Errorf("提示词内容不能为空")
+	}
+	if strings.TrimSpace(in.SystemPrompt) == "" {
+		return "模拟提示词回答：" + userPrompt, nil
+	}
+	return fmt.Sprintf("模拟提示词回答：%s | %s", strings.TrimSpace(in.SystemPrompt), userPrompt), nil
+}
+
 func (m *FakeChatModel) GenerateStream(ctx context.Context, in domainservice.ChatGenerateInput) ([]string, error) {
 	answer, err := m.Generate(ctx, in)
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 
 	domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
 	domainservice "github.com/gaohao-creator/go-rag/internal/domain/service"
+	apprag "github.com/gaohao-creator/go-rag/internal/rag"
 )
 
 type fakeIndexerEngine struct {
@@ -55,6 +56,16 @@ type fakeIndexerChunkRepository struct {
 	created [][]domainmodel.Chunk
 }
 
+type fakeChunkStore struct {
+	requests []domainservice.ChunkStoreRequest
+	err      error
+}
+
+func (f *fakeChunkStore) Store(_ context.Context, req domainservice.ChunkStoreRequest) error {
+	f.requests = append(f.requests, req)
+	return f.err
+}
+
 func (f *fakeIndexerChunkRepository) BatchCreate(_ context.Context, chunks []domainmodel.Chunk) error {
 	f.created = append(f.created, chunks)
 	return nil
@@ -78,7 +89,7 @@ func TestIndexerService_IndexSuccess(t *testing.T) {
 	chunkRepo := &fakeIndexerChunkRepository{}
 	engine := &fakeIndexerEngine{chunks: []domainservice.IndexedChunk{{ChunkID: "chunk-1", Content: "hello", Ext: "{}"}, {ChunkID: "chunk-2", Content: "world", Ext: "{}"}}}
 
-	svc := NewIndexerService(documentRepo, chunkRepo, engine)
+	svc := NewIndexerService(documentRepo, chunkRepo, apprag.NewRAG(engine, nil, nil, nil))
 	ids, err := svc.Index(context.Background(), IndexInput{URI: "./testdata/index.txt", KnowledgeName: "demo", FileName: "index.txt"})
 	if err != nil {
 		t.Fatalf("Index returned error: %v", err)
@@ -108,7 +119,7 @@ func TestIndexerService_IndexFailureMarksDocumentFailed(t *testing.T) {
 	chunkRepo := &fakeIndexerChunkRepository{}
 	engine := &fakeIndexerEngine{err: errors.New("boom")}
 
-	svc := NewIndexerService(documentRepo, chunkRepo, engine)
+	svc := NewIndexerService(documentRepo, chunkRepo, apprag.NewRAG(engine, nil, nil, nil))
 	_, err := svc.Index(context.Background(), IndexInput{URI: "./testdata/index.txt", KnowledgeName: "demo", FileName: "index.txt"})
 	if err == nil {
 		t.Fatal("expected error")
@@ -118,5 +129,52 @@ func TestIndexerService_IndexFailureMarksDocumentFailed(t *testing.T) {
 	}
 	if len(chunkRepo.created) != 0 {
 		t.Fatalf("expected no chunks created, got %+v", chunkRepo.created)
+	}
+}
+
+func TestIndexerService_IndexSuccessAlsoWritesVectorChunks(t *testing.T) {
+	documentRepo := &fakeIndexerDocumentRepository{nextID: 9}
+	chunkRepo := &fakeIndexerChunkRepository{}
+	engine := &fakeIndexerEngine{chunks: []domainservice.IndexedChunk{{ChunkID: "chunk-1", Content: "hello", Ext: "{}"}}}
+	store := &fakeChunkStore{}
+
+	svc := NewIndexerService(documentRepo, chunkRepo, apprag.NewRAG(engine, store, nil, nil))
+	_, err := svc.Index(context.Background(), IndexInput{URI: "./testdata/index.txt", KnowledgeName: "demo", FileName: "index.txt"})
+	if err != nil {
+		t.Fatalf("Index returned error: %v", err)
+	}
+	if len(store.requests) != 1 {
+		t.Fatalf("expected 1 chunk store request, got %d", len(store.requests))
+	}
+	if store.requests[0].KnowledgeName != "demo" {
+		t.Fatalf("expected knowledge name demo, got %s", store.requests[0].KnowledgeName)
+	}
+	if len(store.requests[0].Chunks) != 1 {
+		t.Fatalf("expected 1 stored chunk, got %d", len(store.requests[0].Chunks))
+	}
+	if store.requests[0].Chunks[0].KnowledgeDocID != 9 {
+		t.Fatalf("expected stored chunk document id 9, got %d", store.requests[0].Chunks[0].KnowledgeDocID)
+	}
+}
+
+func TestIndexerService_IndexSuccessIgnoresVectorWriteFailure(t *testing.T) {
+	documentRepo := &fakeIndexerDocumentRepository{nextID: 11}
+	chunkRepo := &fakeIndexerChunkRepository{}
+	engine := &fakeIndexerEngine{chunks: []domainservice.IndexedChunk{{ChunkID: "chunk-1", Content: "hello", Ext: "{}"}}}
+	store := &fakeChunkStore{err: errors.New("vector unavailable")}
+
+	svc := NewIndexerService(documentRepo, chunkRepo, apprag.NewRAG(engine, store, nil, nil))
+	ids, err := svc.Index(context.Background(), IndexInput{URI: "./testdata/index.txt", KnowledgeName: "demo", FileName: "index.txt"})
+	if err != nil {
+		t.Fatalf("expected vector write failure to be ignored, got %v", err)
+	}
+	if len(ids) != 1 || ids[0] != "chunk-1" {
+		t.Fatalf("expected chunk ids to be returned, got %+v", ids)
+	}
+	if len(documentRepo.statusUpdates) != 1 || documentRepo.statusUpdates[0].status != DocumentStatusActive {
+		t.Fatalf("expected active status update, got %+v", documentRepo.statusUpdates)
+	}
+	if len(store.requests) != 1 {
+		t.Fatalf("expected chunk store to be called once, got %d", len(store.requests))
 	}
 }

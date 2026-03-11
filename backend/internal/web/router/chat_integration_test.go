@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cloudwego/eino/schema"
 	domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
 	"github.com/gaohao-creator/go-rag/internal/service"
 	"github.com/gaohao-creator/go-rag/ioc"
@@ -41,8 +42,8 @@ func TestIntegration_ChatRouteWorks(t *testing.T) {
 	}
 	var payload struct {
 		Data struct {
-			Answer     string                       `json:"answer"`
-			References []domainmodel.RetrievedChunk `json:"references"`
+			Answer     string             `json:"answer"`
+			References []*schema.Document `json:"references"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
@@ -53,6 +54,9 @@ func TestIntegration_ChatRouteWorks(t *testing.T) {
 	}
 	if len(payload.Data.References) == 0 {
 		t.Fatal("expected references")
+	}
+	if payload.Data.References[0].ID != "chunk-1" {
+		t.Fatalf("expected chunk-1, got %s", payload.Data.References[0].ID)
 	}
 }
 
@@ -85,7 +89,7 @@ func TestIntegration_ChatStreamRouteWorks(t *testing.T) {
 		t.Fatalf("expected event-stream content type, got %s", response.Header().Get("Content-Type"))
 	}
 	body := response.Body.String()
-	if !strings.Contains(body, "event: references") || !strings.Contains(body, "event: message") || !strings.Contains(body, "[DONE]") {
+	if !strings.Contains(body, "documents:") || !strings.Contains(body, "data:") || !strings.Contains(body, "[DONE]") {
 		t.Fatalf("unexpected stream body: %s", body)
 	}
 }

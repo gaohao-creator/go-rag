@@ -1,6 +1,6 @@
-﻿package dto
+package dto
 
-import domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
+import "github.com/cloudwego/eino/schema"
 
 type ChatRequest struct {
 	ConvID        string  `json:"conv_id" binding:"required"`
@@ -11,6 +11,6 @@ type ChatRequest struct {
 }
 
 type ChatResponse struct {
-	Answer     string                       `json:"answer"`
-	References []domainmodel.RetrievedChunk `json:"references"`
+	Answer     string             `json:"answer"`
+	References []*schema.Document `json:"references"`
 }

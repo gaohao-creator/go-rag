@@ -27,7 +27,7 @@ func (h *Handler) ListChunks(c *gin.Context) {
 		h.writeServiceError(c, err)
 		return
 	}
-	webmiddleware.WriteOK(c, dto.ChunkListResponse{Data: chunks, Total: total, Page: req.Page, Size: req.Size})
+	webmiddleware.WriteOK(c, dto.ChunkListResponse{Data: toChunkViews(chunks), Total: total, Page: req.Page, Size: req.Size})
 }
 
 func (h *Handler) DeleteChunk(c *gin.Context) {

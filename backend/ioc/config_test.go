@@ -1,4 +1,4 @@
-﻿package ioc
+package ioc
 
 import (
 	"os"
@@ -18,6 +18,15 @@ func TestNewConfig_LoadsDefaultConfig(t *testing.T) {
 	if conf.Database.Driver == "" {
 		t.Fatal("expected database driver")
 	}
+	if conf.Vector.Backend == "" {
+		t.Fatal("expected vector backend")
+	}
+	if conf.Vector.IndexPrefix == "" {
+		t.Fatal("expected vector index prefix")
+	}
+	if conf.Vector.EmbeddingModel == "" {
+		t.Fatal("expected embedding model")
+	}
 }
 
 func TestNewConfig_LoadsDotEnvOverrides(t *testing.T) {
@@ -32,7 +41,7 @@ func TestNewConfig_LoadsDotEnvOverrides(t *testing.T) {
 		t.Fatalf("WriteFile config returned error: %v", err)
 	}
 	dotenvPath := filepath.Join(rootDir, ".env")
-	dotenvContent := []byte("GO_RAG_CHAT_PROVIDER=openai\nGO_RAG_CHAT_API_KEY=test-key\nGO_RAG_CHAT_BASE_URL=https://apis.iflow.cn/v1\nGO_RAG_CHAT_MODEL=qwen3-max\n")
+	dotenvContent := []byte("GO_RAG_CHAT_PROVIDER=openai\nGO_RAG_CHAT_API_KEY=test-key\nGO_RAG_CHAT_BASE_URL=https://apis.iflow.cn/v1\nGO_RAG_CHAT_MODEL=qwen3-max\nGO_RAG_VECTOR_ENABLED=true\nGO_RAG_VECTOR_ADDRESS=http://localhost:9200\nGO_RAG_VECTOR_INDEX_PREFIX=kb-\nGO_RAG_VECTOR_EMBEDDING_MODEL=text-embedding-3-small\n")
 	if err := os.WriteFile(dotenvPath, dotenvContent, 0o644); err != nil {
 		t.Fatalf("WriteFile dotenv returned error: %v", err)
 	}
@@ -52,5 +61,17 @@ func TestNewConfig_LoadsDotEnvOverrides(t *testing.T) {
 	}
 	if conf.Chat.Model != "qwen3-max" {
 		t.Fatalf("expected model from .env, got %s", conf.Chat.Model)
+	}
+	if !conf.Vector.Enabled {
+		t.Fatal("expected vector enabled from .env")
+	}
+	if conf.Vector.Address != "http://localhost:9200" {
+		t.Fatalf("expected vector address from .env, got %s", conf.Vector.Address)
+	}
+	if conf.Vector.IndexPrefix != "kb-" {
+		t.Fatalf("expected vector prefix from .env, got %s", conf.Vector.IndexPrefix)
+	}
+	if conf.Vector.EmbeddingModel != "text-embedding-3-small" {
+		t.Fatalf("expected vector embedding model from .env, got %s", conf.Vector.EmbeddingModel)
 	}
 }

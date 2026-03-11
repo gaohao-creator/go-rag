@@ -1,9 +1,7 @@
-﻿package handler
+package handler
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
 
 	domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
@@ -72,15 +70,4 @@ func (h *Handler) NotImplemented(c *gin.Context) {
 
 func (h *Handler) writeDependencyMissing(c *gin.Context) {
 	webmiddleware.WriteServiceUnavailable(c, "服务未配置")
-}
-
-func writeSSEEvent(c *gin.Context, event string, data string) {
-	_, _ = fmt.Fprintf(c.Writer, "event: %s\n", event)
-	_, _ = fmt.Fprintf(c.Writer, "data: %s\n\n", data)
-	c.Writer.Flush()
-}
-
-func encodeJSON(value any) string {
-	payload, _ := json.Marshal(value)
-	return string(payload)
 }

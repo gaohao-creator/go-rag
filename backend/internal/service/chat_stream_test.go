@@ -1,17 +1,19 @@
-﻿package service
+package service
 
 import (
 	"context"
 	"fmt"
 	"strings"
 	"testing"
+
+	apprag "github.com/gaohao-creator/go-rag/internal/rag"
 )
 
 func TestChatService_ChatStreamPersistsConversationAndReturnsChunks(t *testing.T) {
 	history := newFakeMessageRepository()
 	retriever := &fakeChatRetriever{}
 	model := &fakeChatModel{}
-	svc := NewChatService(history, retriever, model)
+	svc := NewChatService(history, retriever, model, apprag.NewRAG(nil, nil, nil, nil))
 
 	result, err := svc.ChatStream(context.Background(), ChatInput{
 		ConvID:        "conv-stream-1",

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/cloudwego/eino/schema"
 	domainmodel "github.com/gaohao-creator/go-rag/internal/domain/model"
 	"github.com/gaohao-creator/go-rag/internal/service"
 	webhandler "github.com/gaohao-creator/go-rag/internal/web/handler"
@@ -20,7 +21,7 @@ func (f *fakeRetrieverService) Retrieve(_ context.Context, in service.RetrieveIn
 	if in.KnowledgeName != "demo" {
 		return nil, context.Canceled
 	}
-	return []domainmodel.RetrievedChunk{{ChunkID: "chunk-1", Content: "hello", Score: 0.9}}, nil
+	return []domainmodel.RetrievedChunk{{ChunkID: "chunk-1", Content: "hello", Ext: "{\"source\":\"demo\"}", Score: 0.9}}, nil
 }
 
 func TestRetrieverHandler_Retrieve(t *testing.T) {
@@ -39,17 +40,23 @@ func TestRetrieverHandler_Retrieve(t *testing.T) {
 	var payload struct {
 		Code int `json:"code"`
 		Data struct {
-			Document []domainmodel.RetrievedChunk `json:"document"`
+			Document []*schema.Document `json:"document"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(response.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 	if len(payload.Data.Document) != 1 {
-		t.Fatalf("expected 1 chunk, got %d", len(payload.Data.Document))
+		t.Fatalf("expected 1 document, got %d", len(payload.Data.Document))
 	}
-	if payload.Data.Document[0].ChunkID != "chunk-1" {
-		t.Fatalf("expected chunk-1, got %s", payload.Data.Document[0].ChunkID)
+	if payload.Data.Document[0].ID != "chunk-1" {
+		t.Fatalf("expected chunk-1, got %s", payload.Data.Document[0].ID)
+	}
+	if payload.Data.Document[0].MetaData == nil {
+		t.Fatal("expected meta_data")
+	}
+	if _, ok := payload.Data.Document[0].MetaData["ext"].(map[string]any); !ok {
+		t.Fatalf("expected ext to be object, got %#v", payload.Data.Document[0].MetaData["ext"])
 	}
 }
 

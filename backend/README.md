@@ -217,6 +217,28 @@ GO_RAG_CHAT_SYSTEM_PROMPT=??????? AI ??????????????????
 
 - `docs/openapi.yaml`????? HTTP ????? OpenAPI 3.0 ???
 
+## 向量检索说明
+
+当前 `backend` 已支持 **ES 优先 + DB 降级** 的检索策略：
+
+- 默认 `vector.enabled=false`，仅使用当前数据库检索实现
+- 打开 `vector.enabled=true` 后，`indexer` 会在 DB 落库成功后尝试把 chunk 同步写入 ES
+- `retriever` 会优先走 ES 向量检索，ES 不可用、检索报错或返回空结果时，自动降级为现有 DB 检索
+- 向量索引按知识库隔离，索引名前缀由 `vector.index_prefix` 控制，默认值为 `rag-`
+
+最小配置示例：
+
+```yaml
+vector:
+  enabled: true
+  backend: "es"
+  address: "http://127.0.0.1:9200"
+  index_prefix: "rag-"
+  embedding_model: "text-embedding-3-large"
+```
+
+如果你更习惯用 `.env` 覆盖配置，可参考 `backend/.env.example` 中的 `GO_RAG_VECTOR_*` 示例。
+
 ## MCP ???Apifox?
 
 ????????? Apifox ????? MCP ?????
@@ -228,3 +250,61 @@ GO_RAG_CHAT_SYSTEM_PROMPT=??????? AI ??????????????????
 
 - `backend/docs/mcp/apifox-cline.windows.json`
 - `backend/docs/mcp/apifox-cline.unix.json`
+
+## 检索质量链补充说明
+
+当前 `backend` 已支持可配置的检索质量链，分为三段：
+
+- `QA`：索引阶段可为每个 chunk 生成问题语料，并额外写入 `qa_content` / `qa_content_vector`
+- `rerank`：检索阶段会合并内容检索与 QA 检索结果，再调用外部 rerank 服务精排
+- `grader`：chat 阶段会在答案持久化前做一次质量判定，未通过时直接返回错误
+
+默认策略仍然偏保守：
+
+- `quality.qa.enabled=false`
+- `rerank.enabled=false`
+- `quality.grader.enabled=false`
+
+开启后建议的最小配置如下：
+
+```yaml
+vector:
+  enabled: true
+  qa_content_field: "qa_content"
+  qa_content_vector_field: "qa_content_vector"
+
+quality:
+  qa:
+    enabled: true
+    question_count: 3
+  grader:
+    enabled: false
+
+rerank:
+  enabled: true
+  base_url: "https://your-rerank-service/v1"
+  api_key: ""
+  model: "bge-reranker-v2-m3"
+  top_n: 5
+  min_score: 0
+```
+
+行为语义：
+
+- 索引：先写 DB，再尝试写 ES；QA 生成失败或 ES 写入失败都不会回滚 DB 主链
+- 检索：优先使用 ES 内容检索；若启用 QA，会追加 QA 检索并合并去重；若启用 rerank，会在返回前重新排序
+- 降级：ES 不可用或返回空结果时，内容检索仍会自动降级到当前 DB 检索
+
+## RAG 模块目录
+
+当前 `backend` 的 RAG 相关实现已经统一收口到 `backend/internal/rag`：
+
+- `internal/rag`：RAG 根包，对外暴露统一 `RAG` 对象
+- `internal/rag/index`：索引对象，负责文档加载、切块与 chunk 映射
+- `internal/rag/store`：存储对象，负责 chunk 写入与 QA 增强
+- `internal/rag/retrieve`：检索对象，负责 DB 检索、ES 降级、QA 合并与 rerank 编排
+- `internal/rag/rerank`：外部 rerank 服务适配
+- `internal/rag/grade`：答案质量判定
+- `internal/rag/es`：ES 向量索引与检索适配
+
+`service` 层现在只直接依赖 `rag` 根包暴露的能力，不再自己拼接 `vector + qa + rerank + grader` 这些内部实现。

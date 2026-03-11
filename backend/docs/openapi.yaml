@@ -8,12 +8,20 @@ info:
   description: |
     根据当前 `backend` HTTP 路由生成的 OpenAPI 文档。
 
-    当前覆盖阶段一能力：
+    当前覆盖能力：
     - 知识库管理
     - 文档管理
     - Chunk 管理
     - 文档索引
     - 检索
+    - Chat / Chat Stream
+
+    检索链路支持两种运行模式：
+    - 默认使用数据库检索
+    - 打开向量配置后使用 ES 优先，失败时自动降级到数据库检索
+    - 打开 QA 配置后，索引阶段会为 chunk 生成问题语料，并额外写入 `qa_content_vector`
+    - 打开 rerank 配置后，检索阶段会先合并内容检索与 QA 检索，再进行精排
+    - 打开 grader 配置后，chat 会在答案落库前执行质量判定
 servers:
   - url: http://127.0.0.1:8080
     description: 本地默认启动地址
@@ -31,7 +39,7 @@ tags:
   - name: indexer
     description: 文档索引接口
   - name: retriever
-    description: 检索接口
+    description: 检索接口，默认 DB 检索；可配置为内容检索 + QA 检索 + rerank，向量检索失败时自动降级到 DB
 
 paths:
   /healthz:
@@ -388,6 +396,12 @@ paths:
     post:
       tags: [retriever]
       summary: 检索 Chunk
+      description: |
+        默认只走数据库检索。
+
+        当启用向量配置后，请求会优先走 ES 内容向量检索；
+        若同时启用 QA 配置，则还会额外走 QA 向量检索并合并去重；
+        若启用 rerank，则会在返回前对候选结果做精排。
       operationId: retrieveChunks
       requestBody:
         required: true
@@ -413,6 +427,11 @@ paths:
     post:
       tags: [chat]
       summary: ????
+      description: |
+        chat 默认直接消费 retriever 返回的 references。
+
+        当启用 grader 配置后，服务会在答案落库前执行一次质量判定；
+        若判定未通过，接口会返回错误，且不会写入 assistant 消息。
       operationId: chat
       requestBody:
         required: true
@@ -439,6 +458,8 @@ paths:
     post:
       tags: [chat]
       summary: ????
+      description: |
+        流式 chat 与普通 chat 共享同一条检索质量链与 grader 判定逻辑。
       operationId: chatStream
       requestBody:
         required: true
